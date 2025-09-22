@@ -3671,10 +3671,12 @@ const int VERSION_PATCH = 0;
 					auto firstWord = readWord();
 					if (line.scope == 0) {
 						// Global Scope
+						if (currentLine) rom_vars_init.emplace_back(ByteCode{LINENUMBER, currentLine});
 						switch (firstWord.type) {
 							case Word::FileInfo:{
 								currentFile = firstWord.word;
 								write({SOURCEFILE, uint32_t(sourceFiles.size())});
+								rom_vars_init.emplace_back(ByteCode{SOURCEFILE, uint32_t(sourceFiles.size())});
 								sourceFiles.emplace_back(currentFile);
 							}break;
 							case Word::Name: {
@@ -5555,6 +5557,10 @@ const int VERSION_PATCH = 0;
 			currentFileByAddr.clear();
 			currentLineByAddr.clear();
 			
+			for (const auto& name : assembly->storageRefs) {
+				storageCache.try_emplace(name, std::vector<std::string>{});
+			}
+			
 			return true;
 		}
 		
@@ -5600,6 +5606,14 @@ const int VERSION_PATCH = 0;
 				}
 				storageDirty = false;
 			}
+		}
+		
+		void LoadStorage(const std::unordered_map<std::string, std::vector<std::string>>& storage) {
+			storageCache = storage;
+		}
+		
+		[[nodiscard]] const std::unordered_map<std::string, std::vector<std::string>>& SaveStorage() const {
+			return storageCache;
 		}
 		
 		virtual void ClearStorage(const std::string& storageDir = "#") {
